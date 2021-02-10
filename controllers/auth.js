@@ -85,9 +85,7 @@ const login = async(req, res = response) => {
             ok: false,
             msg: 'Hable con el administrador'
         });
-
     }
-
 
 }
 

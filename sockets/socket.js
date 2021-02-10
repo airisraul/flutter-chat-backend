@@ -1,6 +1,9 @@
 const { io } = require('../index');
 const Band = require('../models/band');
 const Bands = require('../models/bands');
+const { comprobarJWT } = require('../helpers/jwt');
+const { usuarioConectado, usuarioDesconectado, grabarMensaje } = require('../controllers/socket');
+
 
 const bands = new Bands();
 
@@ -14,10 +17,29 @@ bands.addBand(new Band('Ozzi Osburne'));
 io.on('connection', client => {
     console.log('Cliente conectado');
 
-    client.emit('active-bands', bands.getBands());
+    //client.emit('active-bands', bands.getBands());
+    const [valido, uid] = comprobarJWT(client.handshake.headers['x-token']);
+
+    if (!valido) { return client.disconnect(); }
+    console.log('cliente autenticado');
+
+    usuarioConectado(uid);
+
+    // Ingresar al usuario a una sala en particular
+    // Sala global, client.id, 
+    client.join(uid);
+
+    client.on('mensaje-personal', async(payload) => {
+        // Grabar mensaje en bbdd
+        await grabarMensaje(payload);
+
+        io.to(payload.para).emit('mensaje-personal', payload);
+    });
+
 
     client.on('disconnect', () => {
         console.log('Cliente desconectado');
+        usuarioDesconectado(uid);
     });
 
     client.on('mensaje', (payload) => {
